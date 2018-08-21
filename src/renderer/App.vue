@@ -1,16 +1,16 @@
 <template>
   <div id="app">
-    <landing-page></landing-page>
+    <home-page></home-page>
   </div>
 </template>
 
 <script>
-  import LandingPage from '@/components/LandingPage'
+  import HomePage from '@/components/HomePage'
 
   export default {
-    name: 'bunch',
+    name: 'bunch-compress',
     components: {
-      LandingPage
+      HomePage
     }
   }
 </script>

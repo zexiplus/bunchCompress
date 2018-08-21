@@ -1,9 +1,9 @@
 {
-  "name": "bunch",
+  "name": "bunch-compress",
   "version": "0.0.0",
   "author": "float <zexiplus@outlook.com>",
   "description": "a project can bunch compress js file",
-  "license": null,
+  "license": "MIT",
   "main": "./dist/electron/main.js",
   "scripts": {
     "build": "node .electron-vue/build.js && electron-builder",
@@ -20,7 +20,7 @@
     "postinstall": ""
   },
   "build": {
-    "productName": "bunch",
+    "productName": "bunch-compress",
     "appId": "org.simulatedgreg.electron-vue",
     "directories": {
       "output": "build"
@@ -54,6 +54,7 @@
     }
   },
   "dependencies": {
+    "element-ui": "^2.4.6",
     "vue": "^2.3.3",
     "vue-electron": "^1.0.6"
   },
