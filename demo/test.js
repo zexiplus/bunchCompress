@@ -1,0 +1,1 @@
+function e(e){console.log(e)}var t="float";

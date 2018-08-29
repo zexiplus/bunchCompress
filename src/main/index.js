@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification } from 'electron'
 import compress from './compress'
 /**
  * Set `__static` path to static files in production
@@ -18,10 +18,16 @@ function createWindow () {
    * Initial window options
    */
   mainWindow = new BrowserWindow({
-    height: 563,
+    height: 625,
+    width: 1200,
+    minWidth: 1200,
+    minHeight: 625,
     useContentSize: true,
-    width: 1000
+    frame: true,
   })
+  
+
+  compress.bindContents(mainWindow)
 
   mainWindow.loadURL(winURL)
 
@@ -41,6 +47,21 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (mainWindow === null) {
     createWindow()
+  }
+})
+
+ipcMain.on('compress', (event, opt) => {
+  if (Array.isArray(opt.ignoreRegxs) && opt.ignoreRegxs.length) {
+    opt.ignoreRegxs = opt.ignoreRegxs.map(item => {
+      return '(' + item + ')'
+    })
+  }
+  let reg = new RegExp('(' + opt.ignoreRegxs.join('|') + ')')
+
+  compress.renameFile(opt.folder, reg, opt.postValue)
+  compress.openDirAndCompress(opt.folder, reg, opt.ugOpt);
+  if (opt.renameFlag) {
+    compress.renameFile(opt.folder, reg, opt.renameValue)
   }
 })
 

@@ -25,11 +25,11 @@
             <el-row :gutter="20">
               <el-col :span="18">
                 <el-input placeholder="请输入备份文件增加的后缀名" 
-                  :disabled="!rename" 
+                  :disabled="!renameFlag" 
                   v-model="renameValue"></el-input>
               </el-col>
               <el-col :span="4">
-                <el-switch v-model="rename"></el-switch>
+                <el-switch v-model="renameFlag"></el-switch>
               </el-col>
             </el-row>
           </el-form-item>
@@ -83,16 +83,15 @@
           <el-form-item label="混淆全局变量">
             <el-switch v-model="compressAllVar"></el-switch>
           </el-form-item>
-          <el-form-item label="混淆函数名">
+          <!-- <el-form-item label="混淆函数名">
             <el-switch v-model="compressFn"></el-switch>
-          </el-form-item>
+          </el-form-item> -->
           
         </el-col>
 
         <el-col :span="6">
           <h3 class="form-label">压缩 日志</h3>
-          <div class="compress-log">
-
+          <div class="compress-log" v-html="logText">
           </div>
         </el-col>
 
@@ -100,17 +99,15 @@
     </el-row>
     <div class="button-wrapper">
       <el-button @click="compress">压缩混淆</el-button>
+      <el-button @click="clearLogs">清空日志</el-button>
     </div>
     <div>
-      <el-progress :text-inside="true" :stroke-width="18" :percentage="70"></el-progress>
+      <el-progress :text-inside="true" :stroke-width="18" :percentage="percent"></el-progress>
     </div>
   </div>
 </template>
 
 <script>
-
-  import {remote} from 'electron'
-  const { dialog } = remote
 
   export default {
     name: 'home-page',
@@ -120,16 +117,30 @@
       return {
         selectFolder: '',
         backup: true,
-        rename: false,
+        renameFlag: false,
         renameValue: '.min.js',
         postValue: postValue,
         ignoreFiles: '.min.js',
-        ignoreNum: ['.min.js'],
+        ignoreNum: ['\\.min\\.js$', '\\.backup\\.js$'],
 
         ignoreAuthor: true,
         compressVar: true,
         compressAllVar: false,
         compressFn: false,
+
+        percent: 0, // progress bar init num
+
+        logText: '', // compress log text
+      }
+    },
+    filters: {
+      unescape(html) {
+        return html
+          .replace(html ? /&(?!#?\w+;)/g : /&/g, '&amp;')
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, "\"")
+          .replace(/&#39;/g, "\'")
       }
     },
     watch: {
@@ -138,6 +149,14 @@
           this.postValue = this.genrateDateString()
         }
       }
+    },
+    mounted() {
+        this.$electron.ipcRenderer.on('percent', (event, num) => {
+          this.percent = num
+        })
+        this.$electron.ipcRenderer.on('log', (event, msg) => {
+          this.logText += ('\n' + msg)
+        })
     },
     methods: {
       openDialog () {
@@ -149,17 +168,18 @@
           }
         })
       },
-      open (link) {
-        this.$electron.shell.openExternal(link)
-      },
       genrateDateString () {
         return [
+          '',
           new Date().getFullYear(), 
           new Date().getMonth() + 1, 
           new Date().getDate(),
           new Date().getHours(),
           new Date().getMinutes()
         ].join('_') + '.backup.js'
+      },
+      clearLogs () {
+        this.logText = ''
       },
       addIgnoreRules () {
         if (this.ignoreNum.length < 3) this.ignoreNum.push('')
@@ -168,7 +188,37 @@
         if (this.ignoreNum.length > 1) this.ignoreNum.splice(index, 1)
       },
       compress () {
+        const Notification = this.$electron.remote.Notification
+        if (this.selectFolder == '') {
+          if (!Notification.isSupported()) return
+          let opt = {
+            title: '通知',
+            body: '请选择需要混淆压缩js代码的文件夹'
+          }
+          let notify = new Notification(opt)
+          notify.show()
+          return 
+        } 
 
+        let op = {
+          '-nc': this.ignoreAuthor,
+          '-nm': !this.compressVar,
+          '-nmf': !this.compressFn,
+          '-mt': this.compressAllVar,
+        }
+        let ugOpt = Object.keys(op).filter(key => {
+          return op[key]
+        }).join(' ')
+        console.log(ugOpt)
+        this.percent = 0
+        this.$electron.ipcRenderer.send('compress', {
+            folder: this.selectFolder,
+            ignoreRegxs: this.ignoreNum,
+            renameFlag: this.renameFlag,
+            renameValue: this.renameValue,
+            postValue: this.postValue,
+            ugOpt: ugOpt,
+          })
       }
     }
   }
@@ -219,15 +269,28 @@
   }
 
   .compress-log {
+    line-height: 1.5;
     width: 100%;
     height: 47vh;
     background-color: #2F343B;
-    border-radius: 15px;
-    overflow: auto;
+    border-radius: 5px;
+    color: white;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .compress-suc {
+    color: #A1C181;
+  }
+  .compress-ign {
+    color: #F6F466;
   }
 
   .button-wrapper {
-    margin-bottom: 50px;
+    width: 100%;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-end;
   }
 
 </style>
